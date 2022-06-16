@@ -1,2 +1,5 @@
 *.egg-info
 logs/
+*.ipynb
+wandb/
+__pycache__/

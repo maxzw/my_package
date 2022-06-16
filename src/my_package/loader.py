@@ -1,28 +1,29 @@
+import pathlib
 import numpy as np
 import torch
-from torchvision import datasets
-import torchvision.transforms as transforms
-from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from typing import Mapping, Sequence
 
+from my_package.preprocessing import preprocess_data
+
 
 class CustomDataset:
-    def __init__(self, data: Sequence):
-        self.data = data
+    def __init__(self, data_path: pathlib.Path):
+        self.X, self.y = preprocess_data(data_path)
 
     def __len__(self):
-        return len(self.data)
+        return self.X.shape[0]
 
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.X[idx], self.y[idx]
 
     def collate_fn(self, batch):
-        return [x+"-1" for x in batch]
+        return torch.stack([x for x, _ in batch]), torch.stack([y for _, y in batch])
 
 
 class GroupedDataloader:
     "A class that wraps a list of pytorch iterators, and makes it possible to iterate over them in a random order."
+
     def __init__(
         self,
         datasets: Sequence[CustomDataset],
@@ -39,11 +40,14 @@ class GroupedDataloader:
             shuffle_groups (bool, optional): Whether to shuffle between groups. Defaults to True. If True,
                 each group will be sampled weighed by the number of samples left in the group iterator.
         """
-        self.dataloaders = [DataLoader(
-            dataset,
-            collate_fn=dataset.collate_fn if collate else None,
-            **dataloader_kwargs,
-        ) for dataset in datasets]
+        self.dataloaders = [
+            DataLoader(
+                dataset,
+                collate_fn=dataset.collate_fn if collate else None,
+                **dataloader_kwargs,
+            )
+            for dataset in datasets
+        ]
         self.iterators = [iter(dataloader) for dataloader in self.dataloaders]
         self.shuffle_groups = shuffle_groups
         self.counters = np.array([0 for _ in range(len(self.dataloaders))])
@@ -87,20 +91,35 @@ def get_data_loaders(
         batch_size (int): The batch size.
         split_size (Sequence[float]): The split size of the data.
         num_workers (int, optional): The number of workers to use for the dataloaders. Defaults to 0.
-    
+
     Returns:
         Mapping[str, DataLoader]: A dictionary of data loaders for the datasets.
     """
-    transform = transforms.ToTensor()
-    train_data = datasets.MNIST(root='data', train=True, download=True, transform=transform)
-    test_data = datasets.MNIST(root='data', train=False, download=True, transform=transform)
-    num_train = int(len(train_data) * (1 - valid_size))
-    num_valid = len(train_data) - num_train
-    train_data, valid_data = torch.utils.data.random_split(train_data, [num_train, num_valid])
-    return {
-        key: DataLoader(value, batch_size=batch_size, num_workers=num_workers) for key, value in [
-            ('train', train_data),
-            ('valid', valid_data),
-            ('test', test_data),
+    data = CustomDataset("datasets/train.csv")
+
+    num_train = int(len(data) * (1 - valid_size))
+    num_valid = len(data) - num_train
+
+    train_data, valid_data = torch.utils.data.random_split(data, [num_train, num_valid])
+
+    dataloaders = {
+        split: DataLoader(
+            data,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=(split == "train"),
+        )
+        for split, data in [
+            ("train", train_data),
+            ("valid", valid_data),
         ]
     }
+
+    information = {
+        "num_features": train_data.dataset.X.shape[1],
+        "num_samples": len(data),
+        "num_train_samples": num_train,
+        "num_val_samples": num_valid,
+    }
+
+    return dataloaders, information

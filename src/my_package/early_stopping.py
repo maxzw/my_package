@@ -1,17 +1,18 @@
 import logging
 
+
 class EarlyStopping:
     """
-    Early stopping to stop the training when the loss does not improve after
-    certain epochs.
+    Early stopping to stop the training when the loss does not improve after certain epochs.
+    """
 
-    Source: https://debuggercafe.com/using-learning-rate-scheduler-and-early-stopping-with-pytorch/
-    """    
-    def __init__(self, smaller_is_better: bool = True, patience: int = 5, min_delta: int = 0) -> None:
+    def __init__(
+        self, smaller_is_better: bool = True, patience: int = 5, min_delta: int = 0
+    ) -> None:
         """Initialize the EarlyStopping class.
 
         Args:
-            smaller_is_better (bool, optional): If True, the smaller the reported value is, the better. If False, 
+            smaller_is_better (bool, optional): If True, the smaller the reported value is, the better. If False,
                 the bigger the reported value is, the better. Defaults to True.
             patience (int, optional): how many epochs to wait before stopping when loss is
                not improving. Defaults to 5.
@@ -25,6 +26,13 @@ class EarlyStopping:
         self.best_value = None
         self.early_stop = False
 
+    def is_better(self, value: float) -> bool:
+        """Return True if the value is better than the best value."""
+        if self.smaller_is_better:
+            return value < self.best_value
+        else:
+            return value > self.best_value
+
     def report(self, value: float) -> None:
         """Report a new result.
 
@@ -33,27 +41,16 @@ class EarlyStopping:
         """
         if self.best_value == None:
             self.best_value = value
-        
-        elif self.smaller_is_better:
-            if value < self.best_value - self.min_delta:
-                self.counter += 1
-                logging.info(f"Early stopping counter: {self.counter}")
-                if self.counter >= self.patience:
-                    self.early_stop = True
-                    logging.info("Early stopping: patience reached")
-            else:
-                self.best_value = value
-                self.counter = 0
+
+        elif self.is_better(value):
+            self.best_value = value
+            self.counter = 0
         else:
-            if value > self.best_value + self.min_delta:
-                self.counter += 1
-                logging.info(f"Early stopping counter: {self.counter}")
-                if self.counter >= self.patience:
-                    self.early_stop = True
-                    logging.info("Early stopping: patience reached")
-            else:
-                self.best_value = value
-                self.counter = 0
+            self.counter += 1
+            logging.info(f"Early stopping counter: {self.counter}")
+            if self.counter >= self.patience:
+                self.early_stop = True
+                logging.info("Early stopping: patience reached")
 
     def should_stop(self) -> bool:
         """Return True if the training should stop."""

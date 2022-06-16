@@ -1,6 +1,9 @@
 from typing import Mapping, Optional, Sequence
 
-def get_from_nested_dict(d: Mapping, key: Sequence[str], default=None) -> Optional[float]:
+
+def get_from_nested_dict(
+    d: Mapping, key: Sequence[str], default=None
+) -> Optional[float]:
     """
     Get a value from a nested dictionary.
 
@@ -18,4 +21,4 @@ def get_from_nested_dict(d: Mapping, key: Sequence[str], default=None) -> Option
         if k not in d:
             return default
         d = d[k]
-    return d 
+    return d

@@ -14,8 +14,9 @@ from .tracking import setup_logging, setup_wandb
 @dataclass
 class Objective:
     """An objective for optuna that is used to optimize the hyperparameters of a model."""
+
     def __init__(
-        self, 
+        self,
         use_wandb: bool,
         dataset: str,
         metric: str,
@@ -34,8 +35,12 @@ class Objective:
     def __call__(self, trial: optuna.Trial) -> float:
         """Evaluate the objective function."""
 
-        activation = trial.suggest_categorical("activation", ["relu", "elu", "selu", "tanh"])
-        optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adagrad", "adadelta", "rmsprop"])
+        activation = trial.suggest_categorical(
+            "activation", ["relu", "elu", "selu", "tanh"]
+        )
+        optimizer = trial.suggest_categorical(
+            "optimizer", ["sgd", "adam", "adagrad", "adadelta", "rmsprop"]
+        )
         # ...
 
         # initialize model
@@ -76,5 +81,6 @@ def optimize(
         pruner=pruner_resolver.make(pruner_str),
     )
     study.optimize(objective, n_trials=100)
-    if save_study: pickle.dump(study, open("study.pkl", "wb"))
+    if save_study:
+        pickle.dump(study, open("study.pkl", "wb"))
     return study.best_params, study.best_value
